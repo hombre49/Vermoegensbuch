@@ -1,0 +1,14 @@
+{
+  "name": "Vermögensbuch",
+  "short_name": "Vermögen",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EDF0EC",
+  "theme_color": "#1F5D4A",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
