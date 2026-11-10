@@ -20,7 +20,7 @@
 :root{
   --bg:#EDF0EC; --card:#FBFCFA; --ink:#16211C; --muted:#56665E; --line:#D3DAD4;
   --accent:#1F5D4A; --on-accent:#F8FAF7; --tint:#E0E9E3;
-  --cash:#3E6C8F; --gold:#A8842A; --wp:#7A4E7E; --warn:#A8501C; --bad:#A3302B;
+  --cash:#3E6C8F; --gold:#A8842A; --wp:#7A4E7E; --warn:#A8501C; --bad:#A3302B; --good:#2A7348;
   --f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --fz:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --r:16px;
@@ -29,7 +29,7 @@
   :root{
     --bg:#111815; --card:#1A2420; --ink:#E6ECE7; --muted:#93A39A; --line:#2C3832;
     --accent:#6FC3A6; --on-accent:#0E1512; --tint:#22302A;
-    --cash:#7FB0D4; --gold:#D9B45A; --wp:#C29AC6; --warn:#E39A63; --bad:#EE8C85;
+    --cash:#7FB0D4; --gold:#D9B45A; --wp:#C29AC6; --warn:#E39A63; --bad:#EE8C85; --good:#7CCB95;
     color-scheme:dark;
   }
 }
@@ -72,7 +72,9 @@ main{max-width:860px;margin:0 auto;padding:6px max(18px,env(safe-area-inset-righ
 .zeile .wert{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 .zeile .meta{font-size:14px;color:var(--muted);min-width:0}
 .zeile .neben{text-align:right;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
-.zeile .akt{grid-column:1/-1;display:flex;gap:20px;margin-top:4px}
+.zeile .akt{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 20px;margin-top:4px}
+.zeile .gv{grid-column:1/-1;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.plus{color:var(--good);font-weight:600} .minus{color:var(--bad);font-weight:600}
 .pille{display:inline-block;font-size:12.5px;padding:1px 8px;border:1px solid currentColor;border-radius:999px;margin-left:6px;white-space:nowrap}
 .pille.warn{color:var(--warn)} .pille.bad{color:var(--bad)}
 .leer{color:var(--muted)}
@@ -161,6 +163,10 @@ input,select{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);b
       <div class="kartenkopf"><h2>Verlauf</h2><span class="small muted num" id="sum-verlauf"></span></div>
       <div id="verlauf"></div>
     </div>
+    <div class="karte">
+      <div class="kartenkopf"><h2>Buchungen</h2><span class="small num" id="sum-buch"></span></div>
+      <div id="list-buch"></div>
+    </div>
   </div>
 
   <!-- Konten -->
@@ -193,6 +199,19 @@ input,select{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);b
       <div class="small muted num" id="fuss-gold"></div>
       <div><button class="btn zweit" type="button" data-neu="gold">Gold hinzufügen</button></div>
     </div>
+    <form class="karte" id="form-buch" hidden novalidate>
+      <h2 id="bu-titel">Verkauf</h2>
+      <div class="small muted num" id="bu-pos"></div>
+      <div class="felder">
+        <label for="bu-stk">Stück<input id="bu-stk" inputmode="decimal" autocomplete="off"></label>
+        <label for="bu-betrag"><span id="bu-betrag-l">Erlös gesamt in Euro</span><input id="bu-betrag" inputmode="decimal" autocomplete="off"></label>
+        <label for="bu-datum">Datum<input id="bu-datum" type="date"></label>
+        <label for="bu-konto"><span id="bu-konto-l">Gutschrift auf</span><select id="bu-konto"></select></label>
+      </div>
+      <div class="small muted num" id="bu-richt"></div>
+      <div class="meldung" id="bu-fehler" hidden></div>
+      <div class="formakt"><button class="btn" type="submit" id="bu-ok">Verkauf buchen</button><button class="btn zweit" type="button" id="bu-abbr">Abbrechen</button></div>
+    </form>
     <form class="karte" id="form-gold" hidden novalidate>
       <h2>Goldposten</h2>
       <div class="felder">
@@ -206,6 +225,7 @@ input,select{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);b
         <label for="go-stk">Stück<input id="go-stk" inputmode="decimal" autocomplete="off" placeholder="1"></label>
         <label for="go-gew">Feingewicht je Stück<input id="go-gew" inputmode="decimal" autocomplete="off" placeholder="0,1"></label>
         <label for="go-einh">Einheit<select id="go-einh"><option value="oz">Feinunze (oz)</option><option value="g">Gramm (g)</option></select></label>
+        <label for="go-ek">Einstandspreis je Stück in Euro<input id="go-ek" inputmode="decimal" autocomplete="off" placeholder="freiwillig"></label>
         <label for="go-prod">Händlerpreis von gold.de<select id="go-prod"><option value="">keiner</option><option value="kr110">wie Krügerrand 1/10 oz</option><option value="cb50">wie CombiBar 50 × 1 g</option></select></label>
       </div>
       <div class="meldung" id="go-fehler" hidden></div>
@@ -231,6 +251,7 @@ input,select{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);b
       <div class="felder">
         <label for="wp-suche">Name oder Kürzel<input id="wp-suche" autocomplete="off" placeholder="z. B. iShares Core MSCI World"></label>
         <label for="wp-stk">Stück<input id="wp-stk" inputmode="decimal" autocomplete="off" placeholder="10"></label>
+        <label for="wp-ek">Einstandspreis je Stück in Euro<input id="wp-ek" inputmode="decimal" autocomplete="off" placeholder="freiwillig"></label>
       </div>
       <div class="formakt"><button class="btn zweit" type="button" id="wp-suchbtn">Suchen (1 Abruf)</button></div>
       <div class="treffer" id="wp-treffer"></div>
@@ -296,7 +317,7 @@ var LS="vermoegensbuch.tresor.v1", OZ=31.1034768, LIMIT=25, ITER=310000;
 var TITEL={start:"Übersicht",konten:"Konten",gold:"Gold",wp:"Wertpapiere",mehr:"Mehr"};
 var D=null, key=null, salt=null, busy=false, meldung="", ansicht="start", wegSeit=0;
 var P=null;                                   /* Händlerpreise aus preise.json (öffentlich, unverschlüsselt) */
-var edit={konten:null,gold:null,wp:null}, wpWahl=null;
+var edit={konten:null,gold:null,wp:null}, wpWahl=null, buch=null;
 
 var $=function(id){return document.getElementById(id)};
 function h(tag,attrs){
@@ -305,7 +326,7 @@ function h(tag,attrs){
   for(i=2;i<arguments.length;i++){ var c=arguments[i]; if(c==null) continue; el.appendChild(typeof c==="string"?document.createTextNode(c):c); }
   return el;
 }
-function leerD(){return {S:{konten:[],gold:[],wp:[]},Q:{gold:null,fx:null,wp:{},callsDay:"",calls:0},H:{days:{}},av:"",abschlag:1.7}}
+function leerD(){return {S:{konten:[],gold:[],wp:[]},Q:{gold:null,fx:null,wp:{},callsDay:"",calls:0},H:{days:{}},B:[],av:"",abschlag:1.7}}
 var fEUR=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
 var fUSD=new Intl.NumberFormat("de-DE",{style:"currency",currency:"USD"});
 function fNum(n,d){return new Intl.NumberFormat("de-DE",{minimumFractionDigits:0,maximumFractionDigits:d==null?2:d}).format(n)}
@@ -397,7 +418,7 @@ function offen(){
   $("av-key").value=D.av||""; $("ab-wert").value=fNum(abschlag(),2);
   geh("start"); ladePreise(); aktualisiere(false);
 }
-function sperre(){ ["konten","gold","wp"].forEach(function(s){zeigeForm(s,false)}); zeigeSchloss(); render(); }
+function sperre(){ ["konten","gold","wp"].forEach(function(s){zeigeForm(s,false)}); schliesseBuch(); zeigeSchloss(); render(); }
 $("sperren").addEventListener("click",sperre);
 document.addEventListener("visibilitychange",function(){
   if(document.hidden){ wegSeit=Date.now(); }
@@ -416,6 +437,34 @@ function ankauf(g){
   if(p&&p.ankauf>0&&frisch(p.ankauf_stand)) return {w:p.ankauf*g.stk,echt:true};
   if(Q.gold&&Q.fx) return {w:goldOz(g)*Q.gold.usd*Q.fx.rate*(1-abschlag()/100),echt:false};
   return null;
+}
+/* Richtwert je Stück in Euro: Gold = Ankaufswert (beim Kauf: Händlerkaufpreis), Wertpapier = letzter Kurs. */
+function wertStk(sec,x,art){
+  if(sec==="gold"){
+    if(art==="kauf"){ var p=prodInfo(x); if(p&&p.preis>0) return p.preis; }
+    var a=ankauf({stk:1,gew:x.gew,einh:x.einh,prod:x.prod}); return a?a.w:null;
+  }
+  var q=D.Q.wp[x.sym]; if(!q) return null;
+  if(x.cur==="EUR") return q.price;
+  return D.Q.fx?q.price*D.Q.fx.rate:null;
+}
+function hatEk(x){ return typeof x.ekStk==="number"&&isFinite(x.ekStk); }
+function gvSpan(diff,basis){
+  var t=(diff>=0?"Gewinn +":"Verlust −")+fEUR.format(Math.abs(diff));
+  if(basis>0) t+=" ("+(diff>=0?"+":"−")+fNum(Math.abs(diff/basis*100),1)+" %)";
+  return h("span",{cls:diff>=0?"plus":"minus",text:t});
+}
+function gvZeile(sec,x){
+  if(!hatEk(x)) return null;
+  var ein=x.ekStk*x.stk, w=wertStk(sec,x,"verkauf");
+  var z=h("div",{cls:"gv",text:"Einstand "+fEUR.format(ein)+" ("+fEUR.format(x.ekStk)+" je Stück)"+(w!=null?" · ":"")});
+  if(w!=null) z.appendChild(gvSpan(w*x.stk-ein,ein));
+  return z;
+}
+function gvSumme(sec){
+  var ein=0, wert=0, n=0;
+  D.S[sec].forEach(function(x){ var w=wertStk(sec,x,"verkauf"); if(hatEk(x)&&w!=null){ ein+=x.ekStk*x.stk; wert+=w*x.stk; n++; } });
+  return n?{ein:ein,diff:wert-ein,alle:n===D.S[sec].length}:null;
 }
 function rechne(){
   var S=D.S,Q=D.Q, r={cash:0,zins:0,oz:0,goldUsd:null,goldEur:null,boerseEur:null,geschaetzt:false,haendler:0,haendlerVoll:true,wpEur:0,wpOffen:0,total:0,offen:[]};
@@ -442,7 +491,7 @@ function rechne(){
 
 /* ---------- Anzeige ---------- */
 function geh(v){
-  ansicht=v;
+  ansicht=v; schliesseBuch();
   ["start","konten","gold","wp","mehr"].forEach(function(n){ $("v-"+n).hidden=n!==v; });
   Array.prototype.forEach.call(document.querySelectorAll(".leiste button"),function(b){ if(b.getAttribute("data-geh")===v) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   setze("titel",TITEL[v]); window.scrollTo(0,0); render();
@@ -462,8 +511,8 @@ function render(){
     leg.appendChild(h("span",null,h("i",{cls:"b-"+t[0]}),t[1]+" "+fNum(p,1)+" %"));
   });
   setze("k-konten",fEUR.format(r.cash)); setze("k-konten2",r.zins>0?fEUR.format(r.zins)+" Zinsen im Jahr":S.konten.length+" Konten");
-  setze("k-goldw",r.goldUsd!=null?fUSD.format(r.goldUsd):(r.oz>0?fNum(r.oz,3)+" oz":fUSD.format(0)));
-  setze("k-goldw2",r.goldEur!=null?"Ankaufswert "+(r.geschaetzt?"ca. ":"")+fEUR.format(r.goldEur):"");
+  setze("k-goldw",r.goldEur!=null?(r.geschaetzt?"ca. ":"")+fEUR.format(r.goldEur):(r.oz>0?fNum(r.oz,3)+" oz":fEUR.format(0)));
+  setze("k-goldw2",r.oz>0?"Ankaufswert · "+fNum(r.oz,3)+" oz Feingold":"");
   setze("k-wp",fEUR.format(r.wpEur)); setze("k-wp2",S.wp.length+" Position"+(S.wp.length===1?"":"en"));
 
   setze("k-gold",Q.gold?fUSD.format(Q.gold.usd):"–");
@@ -477,10 +526,13 @@ function render(){
   hinweis("k-meldung",m);
   $("k-btn").disabled=busy||!D.av; setze("k-btn",busy?"Rufe ab …":"Jetzt abrufen");
 
-  renderKonten(r); renderGold(r); renderPreise(); renderWp(r); renderVerlauf();
+  renderKonten(r); renderGold(r); renderPreise(); renderWp(r); renderVerlauf(); renderBuch();
 }
 function aktionen(sec,id){
+  var handel=sec==="gold"||sec==="wp";
   return h("div",{cls:"akt"},
+    handel?h("button",{cls:"link",type:"button","data-buch":"verkauf","data-sec":sec,"data-id":id,text:"Verkaufen"}):null,
+    handel?h("button",{cls:"link",type:"button","data-buch":"kauf","data-sec":sec,"data-id":id,text:"Kaufen"}):null,
     h("button",{cls:"link",type:"button","data-edit":sec,"data-id":id,text:"Bearbeiten"}),
     h("button",{cls:"link rot",type:"button","data-del":sec,"data-id":id,text:"Löschen"}));
 }
@@ -506,16 +558,17 @@ function renderKonten(r){
 }
 function renderGold(r){
   var L=$("list-gold"), S=D.S, Q=D.Q; L.textContent="";
-  setze("sum-gold",S.gold.length?(r.goldUsd!=null?fUSD.format(r.goldUsd):fNum(r.oz,4)+" oz"):"");
+  setze("sum-gold",S.gold.length?(r.goldEur!=null?(r.geschaetzt?"ca. ":"")+fEUR.format(r.goldEur):fNum(r.oz,4)+" oz"):"");
   if(!S.gold.length) L.appendChild(h("div",{cls:"leer",text:"Noch kein Gold. Trag deine Münzen und CombiBar mit Stückzahl ein."}));
   S.gold.forEach(function(g){
     var oz=goldOz(g), usd=Q.gold?oz*Q.gold.usd:null, hp=haendler(g), a=ankauf(g), neben=[];
-    if(a) neben.push("Ankauf "+(a.echt?"":"ca. ")+fEUR.format(a.w));
+    if(usd!=null&&Q.fx) neben.push("Börse "+fEUR.format(usd*Q.fx.rate));
     if(hp!=null) neben.push("Kauf "+fEUR.format(hp));
     L.appendChild(h("div",{cls:"zeile"},
-      h("div",{cls:"name",text:g.name}), h("div",{cls:"wert",text:usd!=null?fUSD.format(usd):"–"}),
+      h("div",{cls:"name",text:g.name}), h("div",{cls:"wert",text:a?(a.echt?"":"ca. ")+fEUR.format(a.w):"–"}),
       h("div",{cls:"meta",text:fNum(g.stk,3)+" × "+fNum(g.gew,4)+" "+g.einh+" · "+fNum(oz,4)+" oz ("+fNum(oz*OZ,2)+" g) fein"}),
       h("div",{cls:"neben",text:neben.join(" · ")}),
+      gvZeile("gold",g),
       aktionen("gold",g.id)));
   });
   var f="";
@@ -526,7 +579,8 @@ function renderGold(r){
     if(r.haendler>0) f+=" Kaufpreis beim Händler: "+fEUR.format(r.haendler)+(r.haendlerVoll?"":" (nicht für alle Posten hinterlegt)")+".";
     f+=" Ins Gesamtvermögen geht der Ankaufswert ein."+(r.geschaetzt?" „ca.“ heißt: Für diesen Posten liegt kein Ankaufspreis von gold.de vor, gerechnet ist der Börsenwert abzüglich "+fNum(abschlag(),2)+" %.":"");
   }
-  setze("fuss-gold",f);
+  var fg=$("fuss-gold"), sg=gvSumme("gold"); fg.textContent=f;
+  if(sg){ fg.appendChild(document.createTextNode(" Einstand"+(sg.alle?"":" (soweit eingetragen)")+": "+fEUR.format(sg.ein)+" · ")); fg.appendChild(gvSpan(sg.diff,sg.ein)); }
 }
 function renderPreise(){
   var L=$("list-preise"); L.textContent="";
@@ -552,9 +606,12 @@ function renderWp(r){
       h("div",{cls:"name",text:w.name}), h("div",{cls:"wert",text:q?geld(q.price*w.stk,w.cur):"–"}),
       h("div",{cls:"meta",text:w.sym+" · "+fNum(w.stk,4)+" Stück"+(q?" · Kurs "+geld(q.price,w.cur)+" vom "+datumDE(q.tday):" · Kurs fehlt")}),
       h("div",{cls:"neben",text:q&&w.cur==="USD"&&Q.fx?fEUR.format(q.price*w.stk*Q.fx.rate):""}),
+      gvZeile("wp",w),
       aktionen("wp",w.id)));
   });
-  setze("fuss-wp",S.wp.length?"Jedes Wertpapier kostet einen Abruf pro Tag. Der Kurs ist der letzte Schlusskurs und kann einen Handelstag zurückliegen.":"");
+  var fw=$("fuss-wp"), sw=gvSumme("wp");
+  fw.textContent=S.wp.length?"Jedes Wertpapier kostet einen Abruf pro Tag. Der Kurs ist der letzte Schlusskurs und kann einen Handelstag zurückliegen.":"";
+  if(sw){ fw.appendChild(document.createTextNode(" Einstand"+(sw.alle?"":" (soweit eingetragen)")+": "+fEUR.format(sw.ein)+" · ")); fw.appendChild(gvSpan(sw.diff,sw.ein)); }
 }
 function renderVerlauf(){
   var box=$("verlauf"), days=D.H.days; box.textContent="";
@@ -586,6 +643,25 @@ function renderVerlauf(){
   box.appendChild(svg);
 }
 
+function renderBuch(){
+  var L=$("list-buch"), B=D.B||[], jahr=dayKey().slice(0,4), gj=0, hatGj=false; L.textContent="";
+  B.forEach(function(b){ if(b.datum.slice(0,4)===jahr&&typeof b.gewinn==="number"){ gj+=b.gewinn; hatGj=true; } });
+  var kopf=$("sum-buch"); kopf.textContent="";
+  if(hatGj){ kopf.appendChild(document.createTextNode(jahr+": ")); kopf.appendChild(gvSpan(gj,0)); }
+  if(!B.length){ L.appendChild(h("div",{cls:"leer",text:"Noch keine Buchung. Käufe und Verkäufe trägst du beim jeweiligen Gold- oder Wertpapierposten ein."})); return; }
+  B.slice(0,30).forEach(function(b,i){
+    var vk=b.art==="verkauf";
+    var z=h("div",{cls:"zeile"},
+      h("div",{cls:"name",text:(vk?"Verkauf · ":"Kauf · ")+b.name}),
+      h("div",{cls:"wert",text:(vk?"+":"−")+fEUR.format(b.betrag)}),
+      h("div",{cls:"meta",text:datumDE(b.datum)+" · "+fNum(b.stk,4)+" Stück · "+(b.kontoName?(vk?"auf ":"von ")+b.kontoName:"ohne Konto")}),
+      h("div",{cls:"neben"},typeof b.gewinn==="number"?gvSpan(b.gewinn,b.betrag-b.gewinn):null));
+    if(i===0) z.appendChild(h("div",{cls:"akt"},h("button",{cls:"link rot",type:"button","data-undo":b.id,text:"Rückgängig"})));
+    L.appendChild(z);
+  });
+  if(B.length>30) L.appendChild(h("div",{cls:"leer small",text:"Ältere Buchungen sind gespeichert, werden hier aber nicht angezeigt."}));
+}
+
 /* ---------- Bestand ändern ---------- */
 function merkeTag(){
   var r=rechne(); if(!(r.total>0)||r.offen.length) return;
@@ -594,6 +670,68 @@ function merkeTag(){
   D.H.days[d]=neu;
 }
 function geaendert(){ merkeTag(); sichern(); render(); }
+
+/* ---------- Kaufen und Verkaufen ---------- */
+function posVon(sec,id){ return D.S[sec].filter(function(o){return o.id===id})[0]; }
+function rund(n,d){ var f=Math.pow(10,d); return Math.round(n*f)/f; }
+function richtwert(){
+  if(!buch||!D) return;
+  var x=posVon(buch.sec,buch.id), n=parseNum($("bu-stk").value), w=x?wertStk(buch.sec,x,buch.art):null;
+  var woher=buch.sec==="wp"?"letzter Kurs":(buch.art==="kauf"?"Händlerpreis":"Ankaufswert");
+  setze("bu-richt",w==null?"":(n>0?"Richtwert für "+fNum(n,4)+" Stück: "+fEUR.format(w*n):"Richtwert je Stück: "+fEUR.format(w))+" ("+woher+")");
+}
+function oeffneBuch(art,sec,id){
+  var x=posVon(sec,id); if(!x) return;
+  buch={art:art,sec:sec,id:id};
+  var f=$("form-buch"), kauf=art==="kauf"; zeigeForm(sec,false);
+  $("v-"+sec).insertBefore(f,$("form-"+sec));
+  setze("bu-titel",kauf?"Kauf":"Verkauf");
+  setze("bu-pos",x.name+" · Bestand "+fNum(x.stk,4)+" Stück"+(hatEk(x)?" · Einstand "+fEUR.format(x.ekStk)+" je Stück":""));
+  setze("bu-betrag-l",kauf?"Kaufpreis gesamt in Euro":"Erlös gesamt in Euro");
+  setze("bu-konto-l",kauf?"Abbuchung von":"Gutschrift auf");
+  setze("bu-ok",kauf?"Kauf buchen":"Verkauf buchen");
+  $("bu-stk").value=""; $("bu-betrag").value=""; $("bu-datum").value=dayKey();
+  var sel=$("bu-konto"); sel.textContent="";
+  D.S.konten.forEach(function(k){ sel.appendChild(h("option",{value:k.id,text:k.name+" ("+fEUR.format(k.betrag)+")"})); });
+  sel.appendChild(h("option",{value:"",text:"ohne Konto"}));
+  hinweis("bu-fehler",""); richtwert(); f.hidden=false; f.scrollIntoView({block:"start",behavior:"smooth"});
+}
+function schliesseBuch(){ buch=null; $("form-buch").hidden=true; }
+$("bu-stk").addEventListener("input",richtwert);
+$("bu-abbr").addEventListener("click",schliesseBuch);
+$("form-buch").addEventListener("submit",function(ev){
+  ev.preventDefault(); if(!buch||!D) return;
+  var x=posVon(buch.sec,buch.id); if(!x) return schliesseBuch();
+  var kauf=buch.art==="kauf", stk=parseNum($("bu-stk").value), betrag=parseNum($("bu-betrag").value), datum=$("bu-datum").value, kid=$("bu-konto").value;
+  if(!(stk>0)) return hinweis("bu-fehler","Die Stückzahl muss größer als null sein.");
+  if(!kauf&&stk>x.stk+1e-9) return hinweis("bu-fehler","Du hast nur "+fNum(x.stk,4)+" Stück im Bestand.");
+  if(isNaN(betrag)||betrag<0) return hinweis("bu-fehler","Der Betrag ist keine Zahl. Beispiel: 5.800,00");
+  if(!datum) return hinweis("bu-fehler","Gib ein Datum an.");
+  var konto=kid?D.S.konten.filter(function(k){return k.id===kid})[0]:null;
+  var b={id:neuId(),datum:datum,art:buch.art,sec:buch.sec,posId:x.id,name:x.name,stk:stk,betrag:rund(betrag,2),
+         kontoId:konto?konto.id:"",kontoName:konto?konto.name:"",gewinn:null,vorher:JSON.parse(JSON.stringify(x))};
+  if(kauf){
+    if(hatEk(x)) x.ekStk=rund((x.stk*x.ekStk+betrag)/(x.stk+stk),4);
+    x.stk=rund(x.stk+stk,6);
+    if(konto) konto.betrag=rund(konto.betrag-betrag,2);
+  } else {
+    if(hatEk(x)) b.gewinn=rund(betrag-stk*x.ekStk,2);
+    x.stk=rund(x.stk-stk,6);
+    if(x.stk<1e-9) D.S[buch.sec]=D.S[buch.sec].filter(function(o){return o.id!==x.id});
+    if(konto) konto.betrag=rund(konto.betrag+betrag,2);
+  }
+  if(!D.B) D.B=[];
+  D.B.unshift(b); schliesseBuch(); geaendert();
+});
+function rueckgaengig(id){
+  var b=(D.B||[])[0]; if(!b||b.id!==id) return;
+  var liste=D.S[b.sec], da=false;
+  D.S[b.sec]=liste.map(function(o){ if(o.id===b.posId){ da=true; return b.vorher; } return o; });
+  if(!da) D.S[b.sec].push(b.vorher);
+  var konto=b.kontoId?D.S.konten.filter(function(k){return k.id===b.kontoId})[0]:null;
+  if(konto) konto.betrag=rund(konto.betrag+(b.art==="kauf"?b.betrag:-b.betrag),2);
+  D.B.shift(); geaendert();
+}
 
 /* ---------- Händlerpreise (Datei neben der App, täglich von GitHub erneuert) ---------- */
 function ladePreise(){
@@ -666,16 +804,21 @@ $("k-btn").addEventListener("click",function(){aktualisiere(true)});
 function zeigeForm(sec,an){ $("form-"+sec).hidden=!an; if(!an) edit[sec]=null; }
 function fuelle(sec,x){
   if(sec==="konten"){ $("ko-name").value=x?x.name:""; $("ko-art").value=x?x.art:"Tagesgeld"; $("ko-betrag").value=x?fNum(x.betrag,2):""; $("ko-zins").value=x&&x.zins?fNum(x.zins,3):""; $("ko-faellig").value=x&&x.faellig?x.faellig:""; hinweis("ko-fehler",""); }
-  if(sec==="gold"){ $("go-vorlage").value=""; $("go-name").value=x?x.name:""; $("go-stk").value=x?fNum(x.stk,3):""; $("go-gew").value=x?fNum(x.gew,4):""; $("go-einh").value=x?x.einh:"oz"; $("go-prod").value=x&&x.prod?x.prod:""; hinweis("go-fehler",""); }
-  if(sec==="wp"){ $("wp-suche").value=x?x.name:""; $("wp-stk").value=x?fNum(x.stk,4):""; $("wp-treffer").textContent=""; wpWahl=x?{sym:x.sym,name:x.name,cur:x.cur}:null; hinweis("wp-fehler",""); $("wp-suche").disabled=!!x; $("wp-suchbtn").hidden=!!x; }
+  if(sec==="gold"){ $("go-vorlage").value=""; $("go-name").value=x?x.name:""; $("go-stk").value=x?fNum(x.stk,3):""; $("go-gew").value=x?fNum(x.gew,4):""; $("go-einh").value=x?x.einh:"oz"; $("go-prod").value=x&&x.prod?x.prod:""; $("go-ek").value=x&&hatEk(x)?fNum(x.ekStk,2):""; hinweis("go-fehler",""); }
+  if(sec==="wp"){ $("wp-suche").value=x?x.name:""; $("wp-stk").value=x?fNum(x.stk,4):""; $("wp-ek").value=x&&hatEk(x)?fNum(x.ekStk,2):""; $("wp-treffer").textContent=""; wpWahl=x?{sym:x.sym,name:x.name,cur:x.cur}:null; hinweis("wp-fehler",""); $("wp-suche").disabled=!!x; $("wp-suchbtn").hidden=!!x; }
 }
 document.addEventListener("click",function(ev){
   var b=ev.target.closest("button"); if(!b||!D) return;
   var sec, id, x;
   if((sec=b.getAttribute("data-geh"))){ geh(sec); return; }
-  if((sec=b.getAttribute("data-neu"))){ edit[sec]=null; fuelle(sec,null); zeigeForm(sec,true); $("form-"+sec).scrollIntoView({block:"start",behavior:"smooth"}); return; }
+  if(b.hasAttribute("data-buch")){ oeffneBuch(b.getAttribute("data-buch"),b.getAttribute("data-sec"),b.getAttribute("data-id")); return; }
+  if(b.hasAttribute("data-undo")){
+    if(b.getAttribute("data-sicher")!=="1"){ b.setAttribute("data-sicher","1"); b.textContent="Wirklich rückgängig machen?"; setTimeout(function(){ if(b.isConnected){b.removeAttribute("data-sicher"); b.textContent="Rückgängig";} },4000); return; }
+    rueckgaengig(b.getAttribute("data-undo")); return;
+  }
+  if((sec=b.getAttribute("data-neu"))){ schliesseBuch(); edit[sec]=null; fuelle(sec,null); zeigeForm(sec,true); $("form-"+sec).scrollIntoView({block:"start",behavior:"smooth"}); return; }
   if((sec=b.getAttribute("data-abbr"))){ zeigeForm(sec,false); return; }
-  if((sec=b.getAttribute("data-edit"))){ id=b.getAttribute("data-id"); x=D.S[sec].filter(function(o){return o.id===id})[0]; if(!x) return; fuelle(sec,x); edit[sec]=id; $("form-"+sec).hidden=false; $("form-"+sec).scrollIntoView({block:"start",behavior:"smooth"}); return; }
+  if((sec=b.getAttribute("data-edit"))){ id=b.getAttribute("data-id"); x=D.S[sec].filter(function(o){return o.id===id})[0]; if(!x) return; schliesseBuch(); fuelle(sec,x); edit[sec]=id; $("form-"+sec).hidden=false; $("form-"+sec).scrollIntoView({block:"start",behavior:"smooth"}); return; }
   if((sec=b.getAttribute("data-del"))){
     if(b.getAttribute("data-sicher")!=="1"){ b.setAttribute("data-sicher","1"); b.textContent="Wirklich löschen?"; setTimeout(function(){ if(b.isConnected){b.removeAttribute("data-sicher"); b.textContent="Löschen";} },4000); return; }
     id=b.getAttribute("data-id"); D.S[sec]=D.S[sec].filter(function(o){return o.id!==id}); if(edit[sec]===id) zeigeForm(sec,false); geaendert(); return;
@@ -706,7 +849,10 @@ $("form-gold").addEventListener("submit",function(ev){
   if(!name) return hinweis("go-fehler","Gib dem Posten eine Bezeichnung.");
   if(!(stk>0)) return hinweis("go-fehler","Die Stückzahl muss größer als null sein.");
   if(!(gew>0)) return hinweis("go-fehler","Das Feingewicht je Stück muss größer als null sein. Bei einer CombiBar 50 × 1 g sind das 50 Gramm.");
-  ablegen("gold",{name:name,stk:stk,gew:gew,einh:$("go-einh").value,prod:$("go-prod").value});
+  var ekT=$("go-ek").value.trim(), ek=ekT?parseNum(ekT):null;
+  if(ekT&&(isNaN(ek)||ek<0)) return hinweis("go-fehler","Der Einstandspreis ist keine Zahl. Beispiel: 350,00");
+  var neuG={name:name,stk:stk,gew:gew,einh:$("go-einh").value,prod:$("go-prod").value}; if(ek!=null) neuG.ekStk=ek;
+  ablegen("gold",neuG);
 });
 $("wp-suchbtn").addEventListener("click",function(){
   var q=$("wp-suche").value.trim(), btn=this, box=$("wp-treffer");
@@ -727,8 +873,10 @@ $("form-wp").addEventListener("submit",function(ev){
   var stk=parseNum($("wp-stk").value);
   if(!wpWahl) return hinweis("wp-fehler","Such das Wertpapier und wähle einen Treffer aus.");
   if(!(stk>0)) return hinweis("wp-fehler","Die Stückzahl muss größer als null sein.");
-  var neu=!edit.wp;
-  ablegen("wp",{sym:wpWahl.sym,name:wpWahl.name,cur:wpWahl.cur,stk:stk});
+  var ekT=$("wp-ek").value.trim(), ek=ekT?parseNum(ekT):null;
+  if(ekT&&(isNaN(ek)||ek<0)) return hinweis("wp-fehler","Der Einstandspreis ist keine Zahl. Beispiel: 95,40");
+  var neu=!edit.wp, neuW={sym:wpWahl.sym,name:wpWahl.name,cur:wpWahl.cur,stk:stk}; if(ek!=null) neuW.ekStk=ek;
+  ablegen("wp",neuW);
   if(neu) aktualisiere(false);
 });
 
