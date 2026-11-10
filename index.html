@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#EDF0EC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#111815" media="(prefers-color-scheme: dark)">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://www.alphavantage.co; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://www.alphavantage.co https://api.github.com; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
@@ -232,8 +232,9 @@ input,select{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);b
       <div class="formakt"><button class="btn" type="submit">Speichern</button><button class="btn zweit" type="button" data-abbr="gold">Abbrechen</button></div>
     </form>
     <div class="karte">
-      <h2>Händlerpreise</h2>
+      <div class="kartenkopf"><h2>Händlerpreise</h2><button class="rund" type="button" id="hp-btn">Jetzt aktualisieren</button></div>
       <div id="list-preise"></div>
+      <div class="meldung" id="hp-status" aria-live="polite" hidden></div>
       <div class="small muted" id="fuss-preise"></div>
     </div>
   </div>
@@ -275,6 +276,13 @@ input,select{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);b
       <label for="ab-wert">Abschlag in %<input id="ab-wert" inputmode="decimal" autocomplete="off" placeholder="1,7"></label>
       <div class="meldung" id="ab-info" hidden></div>
       <div class="formakt"><button class="btn zweit" type="submit">Abschlag speichern</button></div>
+    </form>
+    <form class="karte" id="form-gh" novalidate>
+      <h2>Händlerpreise aus der App holen</h2>
+      <div class="small muted">Mit einem GitHub-Schlüssel kann die App das Preisprogramm selbst starten (Knopf „Jetzt aktualisieren“ im Reiter Gold). Der Schlüssel braucht für das Repository nur das Recht „Actions: Read and write“. Er wird verschlüsselt auf diesem Gerät gespeichert.</div>
+      <label for="gh-key">GitHub-Schlüssel<input id="gh-key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></label>
+      <div class="meldung" id="gh-info" hidden></div>
+      <div class="formakt"><button class="btn zweit" type="submit">Schlüssel speichern</button></div>
     </form>
     <div class="karte">
       <h2>Sicherung</h2>
@@ -326,7 +334,7 @@ function h(tag,attrs){
   for(i=2;i<arguments.length;i++){ var c=arguments[i]; if(c==null) continue; el.appendChild(typeof c==="string"?document.createTextNode(c):c); }
   return el;
 }
-function leerD(){return {S:{konten:[],gold:[],wp:[]},Q:{gold:null,fx:null,wp:{},callsDay:"",calls:0},H:{days:{}},B:[],av:"",abschlag:1.7}}
+function leerD(){return {S:{konten:[],gold:[],wp:[]},Q:{gold:null,fx:null,wp:{},callsDay:"",calls:0},H:{days:{}},B:[],av:"",gh:"",abschlag:1.7}}
 var fEUR=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
 var fUSD=new Intl.NumberFormat("de-DE",{style:"currency",currency:"USD"});
 function fNum(n,d){return new Intl.NumberFormat("de-DE",{minimumFractionDigits:0,maximumFractionDigits:d==null?2:d}).format(n)}
@@ -415,7 +423,7 @@ $("schloss-form").addEventListener("submit",function(ev){
 function offen(){
   $("schloss").hidden=true; $("pw1").value=""; $("pw2").value="";
   if(navigator.storage&&navigator.storage.persist){ try{navigator.storage.persist()}catch(e){} }
-  $("av-key").value=D.av||""; $("ab-wert").value=fNum(abschlag(),2);
+  $("av-key").value=D.av||""; $("gh-key").value=D.gh||""; $("ab-wert").value=fNum(abschlag(),2);
   geh("start"); ladePreise(); aktualisiere(false);
 }
 function sperre(){ ["konten","gold","wp"].forEach(function(s){zeigeForm(s,false)}); schliesseBuch(); zeigeSchloss(); render(); }
@@ -738,6 +746,76 @@ function ladePreise(){
   fetch("preise.json?t="+dayKey()+"-"+new Date().getHours(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.produkte){P=j; if(D){merkeTag(); sichern();} render();} }).catch(function(){});
 }
 
+/* ---------- Händlerpreise aus der App anstoßen (GitHub startet das Preisprogramm) ---------- */
+var GH=(function(){
+  var m=/^([^.]+)\.github\.io$/.exec(location.hostname), seg=location.pathname.split("/").filter(Boolean)[0];
+  return {o:m?m[1]:"hombre49", r:m&&seg&&seg.indexOf(".")<0?seg:"Vermoegensbuch"};
+})();
+var hpBusy=false;
+function gh(pfad,tok,opt){
+  opt=opt||{};
+  var hd={"Accept":opt.raw?"application/vnd.github.raw+json":"application/vnd.github+json"}, init={method:opt.method||"GET",headers:hd,cache:"no-store"};
+  if(tok) hd.Authorization="Bearer "+tok;
+  if(opt.body){ init.body=JSON.stringify(opt.body); hd["Content-Type"]="application/json"; }
+  return fetch("https://api.github.com/repos/"+GH.o+"/"+GH.r+pfad,init).then(function(r){
+    if(!r.ok) throw {code:r.status};
+    return r.status===204?null:(opt.raw?r.text():r.json());
+  },function(){ throw {code:"netz"}; });
+}
+function hpStatus(t){
+  var e=$("hp-status"); e.textContent=t||""; e.hidden=!t;
+  $("hp-btn").disabled=hpBusy; setze("hp-btn",hpBusy?"Läuft …":"Jetzt aktualisieren");
+}
+function ghFehler(c){
+  switch(c){
+    case 401: return "GitHub lehnt den Schlüssel ab. Er ist falsch oder abgelaufen. Trag unter „Mehr“ einen neuen ein.";
+    case 403: case 404: return "Der Schlüssel darf das Preisprogramm nicht starten. Er braucht für das Repository das Recht „Actions: Read and write“.";
+    case "netz": return "Keine Verbindung zu GitHub. Prüf die Internetverbindung und versuch es noch einmal.";
+    case "zeit": return "GitHub hat nach fünf Minuten noch kein Ergebnis geliefert. Die bisherigen Preise bleiben stehen, versuch es später noch einmal.";
+    case "rot": return "Das Preisprogramm hat bei gold.de keine Preise gefunden. Die bisherigen Preise bleiben stehen.";
+    default: return "Die Aktualisierung ist fehlgeschlagen (GitHub meldet "+c+"). Die bisherigen Preise bleiben stehen.";
+  }
+}
+function holeHaendler(){
+  if(hpBusy||!D) return;
+  var tok=D.gh, t0=Date.now(), wid=null;
+  if(!tok) return hpStatus("Dafür fehlt der GitHub-Schlüssel. Trag ihn unter „Mehr“ ein.");
+  hpBusy=true; hpStatus("Starte das Preisprogramm bei GitHub …");
+  gh("/actions/workflows",tok).then(function(j){
+    var w=(j.workflows||[]).filter(function(x){return /goldpreise\.ya?ml$/.test(x.path)&&x.state==="active"})[0];
+    if(!w) throw {code:404};
+    wid=w.id;
+    return gh("/actions/workflows/"+wid+"/dispatches",tok,{method:"POST",body:{ref:"main"}});
+  }).then(function(){
+    function frage(){
+      if(Date.now()-t0>300000) throw {code:"zeit"};
+      return warte(8000).then(function(){
+        hpStatus("GitHub holt die Preise bei gold.de, seit "+Math.round((Date.now()-t0)/1000)+" Sekunden. Das dauert ein bis zwei Minuten.");
+        return gh("/actions/workflows/"+wid+"/runs?event=workflow_dispatch&per_page=1",tok);
+      }).then(function(j){
+        var r=(j.workflow_runs||[])[0];
+        if(!r||Date.parse(r.created_at)<t0-60000||r.status!=="completed") return frage();
+        if(r.conclusion!=="success") throw {code:"rot"};
+      });
+    }
+    return frage();
+  }).then(function(){
+    return gh("/contents/preise.json",null,{raw:true});
+  }).then(function(txt){
+    var j=JSON.parse(txt);
+    if(j&&j.produkte){ P=j; if(D){ merkeTag(); sichern(); } }
+    hpBusy=false;
+    hpStatus("Händlerpreise aktualisiert um "+new Date().toLocaleTimeString("de-DE",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"})+" Uhr.");
+    if(D) render();
+  }).catch(function(e){ hpBusy=false; hpStatus(ghFehler(e&&e.code!==undefined?e.code:"unbekannt")); });
+}
+$("hp-btn").addEventListener("click",holeHaendler);
+$("form-gh").addEventListener("submit",function(ev){
+  ev.preventDefault(); if(!D) return;
+  D.gh=$("gh-key").value.trim();
+  sichern().then(function(){ hinweis("gh-info",D.gh?"Schlüssel gespeichert. Den Knopf „Jetzt aktualisieren“ findest du im Reiter Gold bei den Händlerpreisen.":"Schlüssel entfernt."); hpStatus(""); });
+});
+
 /* ---------- Kursabruf bei Alpha Vantage ---------- */
 function zaehle(){var Q=D.Q,d=dayKey(); if(Q.callsDay!==d){Q.callsDay=d;Q.calls=0} Q.calls++}
 function fehlerText(c){
@@ -914,7 +992,7 @@ $("imp-btn").addEventListener("click",function(){
     D=Object.assign(leerD(),r.daten); key=r.key; salt=r.salt;
     return sichern();
   }).then(function(){
-    $("imp-pw").value=""; $("imp-datei").value=""; $("av-key").value=D.av||""; $("ab-wert").value=fNum(abschlag(),2);
+    $("imp-pw").value=""; $("imp-datei").value=""; $("av-key").value=D.av||""; $("gh-key").value=D.gh||""; $("ab-wert").value=fNum(abschlag(),2);
     hinweis("imp-info","Sicherung eingespielt. Ab jetzt gilt das Passwort der Sicherung."); render();
   },function(){ hinweis("imp-info","Die Datei ließ sich nicht öffnen. Entweder stimmt das Passwort nicht oder es ist keine Sicherung des Vermögensbuchs."); });
 });
