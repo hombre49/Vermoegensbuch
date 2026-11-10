@@ -248,6 +248,13 @@ input,select{font:inherit;font-size:17px;color:var(--ink);background:var(--bg);b
       <div class="meldung" id="av-info" hidden></div>
       <div class="formakt"><button class="btn" type="submit">Schlüssel speichern</button></div>
     </form>
+    <form class="karte" id="form-ab" novalidate>
+      <h2>Gold bewerten</h2>
+      <div class="small muted">Dein Gold zählt mit dem Ankaufspreis von gold.de. Liegt für einen Posten keiner vor, rechnet die App mit dem Börsenwert abzüglich dieses Abschlags.</div>
+      <label for="ab-wert">Abschlag in %<input id="ab-wert" inputmode="decimal" autocomplete="off" placeholder="1,7"></label>
+      <div class="meldung" id="ab-info" hidden></div>
+      <div class="formakt"><button class="btn zweit" type="submit">Abschlag speichern</button></div>
+    </form>
     <div class="karte">
       <h2>Sicherung</h2>
       <div class="small muted">Deine Daten liegen nur auf diesem Gerät. Die Sicherungsdatei ist verschlüsselt und lässt sich nur mit deinem Passwort öffnen. Leg ab und zu eine an, und nutze sie, um den Stand auf ein anderes Gerät zu bringen.</div>
@@ -298,7 +305,7 @@ function h(tag,attrs){
   for(i=2;i<arguments.length;i++){ var c=arguments[i]; if(c==null) continue; el.appendChild(typeof c==="string"?document.createTextNode(c):c); }
   return el;
 }
-function leerD(){return {S:{konten:[],gold:[],wp:[]},Q:{gold:null,fx:null,wp:{},callsDay:"",calls:0},H:{days:{}},av:""}}
+function leerD(){return {S:{konten:[],gold:[],wp:[]},Q:{gold:null,fx:null,wp:{},callsDay:"",calls:0},H:{days:{}},av:"",abschlag:1.7}}
 var fEUR=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
 var fUSD=new Intl.NumberFormat("de-DE",{style:"currency",currency:"USD"});
 function fNum(n,d){return new Intl.NumberFormat("de-DE",{minimumFractionDigits:0,maximumFractionDigits:d==null?2:d}).format(n)}
@@ -387,7 +394,7 @@ $("schloss-form").addEventListener("submit",function(ev){
 function offen(){
   $("schloss").hidden=true; $("pw1").value=""; $("pw2").value="";
   if(navigator.storage&&navigator.storage.persist){ try{navigator.storage.persist()}catch(e){} }
-  $("av-key").value=D.av||"";
+  $("av-key").value=D.av||""; $("ab-wert").value=fNum(abschlag(),2);
   geh("start"); ladePreise(); aktualisiere(false);
 }
 function sperre(){ ["konten","gold","wp"].forEach(function(s){zeigeForm(s,false)}); zeigeSchloss(); render(); }
@@ -399,14 +406,29 @@ document.addEventListener("visibilitychange",function(){
 
 /* ---------- Rechnen ---------- */
 function goldOz(g){return g.stk*g.gew*(g.einh==="g"?1/OZ:1)}
-function haendler(g){ var p=P&&P.produkte&&g.prod&&P.produkte[g.prod]; return p&&p.preis>0?p.preis*g.stk:null; }
+function prodInfo(g){ return P&&P.produkte&&g.prod?P.produkte[g.prod]:null; }
+function frisch(iso){ return !!iso&&(Date.parse(dayKey())-Date.parse(iso))/864e5<=7; }
+function abschlag(){ return typeof D.abschlag==="number"&&isFinite(D.abschlag)?D.abschlag:1.7; }
+function haendler(g){ var p=prodInfo(g); return p&&p.preis>0?p.preis*g.stk:null; }
+/* Ankaufswert: höchstes Händlergebot von gold.de; fehlt es, Börsenwert abzüglich Abschlag. */
+function ankauf(g){
+  var p=prodInfo(g), Q=D.Q;
+  if(p&&p.ankauf>0&&frisch(p.ankauf_stand)) return {w:p.ankauf*g.stk,echt:true};
+  if(Q.gold&&Q.fx) return {w:goldOz(g)*Q.gold.usd*Q.fx.rate*(1-abschlag()/100),echt:false};
+  return null;
+}
 function rechne(){
-  var S=D.S,Q=D.Q, r={cash:0,zins:0,oz:0,goldUsd:null,goldEur:null,haendler:0,haendlerVoll:true,wpEur:0,wpOffen:0,total:0,offen:[]};
+  var S=D.S,Q=D.Q, r={cash:0,zins:0,oz:0,goldUsd:null,goldEur:null,boerseEur:null,geschaetzt:false,haendler:0,haendlerVoll:true,wpEur:0,wpOffen:0,total:0,offen:[]};
   S.konten.forEach(function(k){r.cash+=k.betrag; r.zins+=k.betrag*(k.zins||0)/100});
-  S.gold.forEach(function(g){r.oz+=goldOz(g); var hp=haendler(g); if(hp==null) r.haendlerVoll=false; else r.haendler+=hp;});
+  var ankSum=0, ankVoll=true;
+  S.gold.forEach(function(g){
+    r.oz+=goldOz(g);
+    var hp=haendler(g); if(hp==null) r.haendlerVoll=false; else r.haendler+=hp;
+    var a=ankauf(g); if(!a) ankVoll=false; else { ankSum+=a.w; if(!a.echt) r.geschaetzt=true; }
+  });
   if(r.oz>0){
-    if(Q.gold){ r.goldUsd=r.oz*Q.gold.usd; if(Q.fx) r.goldEur=r.goldUsd*Q.fx.rate; }
-    if(r.goldEur==null) r.offen.push("Gold");
+    if(Q.gold){ r.goldUsd=r.oz*Q.gold.usd; if(Q.fx) r.boerseEur=r.goldUsd*Q.fx.rate; }
+    if(ankVoll) r.goldEur=ankSum; else r.offen.push("Gold");
   }
   S.wp.forEach(function(w){
     var q=Q.wp[w.sym], e=null;
@@ -441,7 +463,7 @@ function render(){
   });
   setze("k-konten",fEUR.format(r.cash)); setze("k-konten2",r.zins>0?fEUR.format(r.zins)+" Zinsen im Jahr":S.konten.length+" Konten");
   setze("k-goldw",r.goldUsd!=null?fUSD.format(r.goldUsd):(r.oz>0?fNum(r.oz,3)+" oz":fUSD.format(0)));
-  setze("k-goldw2",r.goldEur!=null?fEUR.format(r.goldEur)+" · "+fNum(r.oz,3)+" oz":"");
+  setze("k-goldw2",r.goldEur!=null?"Ankaufswert "+(r.geschaetzt?"ca. ":"")+fEUR.format(r.goldEur):"");
   setze("k-wp",fEUR.format(r.wpEur)); setze("k-wp2",S.wp.length+" Position"+(S.wp.length===1?"":"en"));
 
   setze("k-gold",Q.gold?fUSD.format(Q.gold.usd):"–");
@@ -487,9 +509,9 @@ function renderGold(r){
   setze("sum-gold",S.gold.length?(r.goldUsd!=null?fUSD.format(r.goldUsd):fNum(r.oz,4)+" oz"):"");
   if(!S.gold.length) L.appendChild(h("div",{cls:"leer",text:"Noch kein Gold. Trag deine Münzen und CombiBar mit Stückzahl ein."}));
   S.gold.forEach(function(g){
-    var oz=goldOz(g), usd=Q.gold?oz*Q.gold.usd:null, hp=haendler(g), neben=[];
-    if(usd!=null&&Q.fx) neben.push(fEUR.format(usd*Q.fx.rate));
-    if(hp!=null) neben.push("Händler "+fEUR.format(hp));
+    var oz=goldOz(g), usd=Q.gold?oz*Q.gold.usd:null, hp=haendler(g), a=ankauf(g), neben=[];
+    if(a) neben.push("Ankauf "+(a.echt?"":"ca. ")+fEUR.format(a.w));
+    if(hp!=null) neben.push("Kauf "+fEUR.format(hp));
     L.appendChild(h("div",{cls:"zeile"},
       h("div",{cls:"name",text:g.name}), h("div",{cls:"wert",text:usd!=null?fUSD.format(usd):"–"}),
       h("div",{cls:"meta",text:fNum(g.stk,3)+" × "+fNum(g.gew,4)+" "+g.einh+" · "+fNum(oz,4)+" oz ("+fNum(oz*OZ,2)+" g) fein"}),
@@ -499,9 +521,10 @@ function renderGold(r){
   var f="";
   if(S.gold.length){
     f="Zusammen "+fNum(r.oz,4)+" oz ("+fNum(r.oz*OZ,2)+" g) Feingold.";
-    if(r.goldEur!=null) f+=" Börsenwert in Euro: "+fEUR.format(r.goldEur)+".";
-    if(r.haendler>0) f+=" Händlerpreis zusammen: "+fEUR.format(r.haendler)+(r.haendlerVoll?"":" (nicht für alle Posten hinterlegt)")+".";
-    f+=" Ins Gesamtvermögen geht der Börsenwert ein.";
+    if(r.goldEur!=null) f+=" Ankaufswert: "+(r.geschaetzt?"ca. ":"")+fEUR.format(r.goldEur)+".";
+    if(r.boerseEur!=null) f+=" Börsenwert: "+fEUR.format(r.boerseEur)+".";
+    if(r.haendler>0) f+=" Kaufpreis beim Händler: "+fEUR.format(r.haendler)+(r.haendlerVoll?"":" (nicht für alle Posten hinterlegt)")+".";
+    f+=" Ins Gesamtvermögen geht der Ankaufswert ein."+(r.geschaetzt?" „ca.“ heißt: Für diesen Posten liegt kein Ankaufspreis von gold.de vor, gerechnet ist der Börsenwert abzüglich "+fNum(abschlag(),2)+" %.":"");
   }
   setze("fuss-gold",f);
 }
@@ -510,12 +533,14 @@ function renderPreise(){
   if(!P||!P.produkte){ L.appendChild(h("div",{cls:"leer",text:"Händlerpreise sind noch nicht geladen."})); setze("fuss-preise",""); return; }
   Object.keys(P.produkte).forEach(function(k){
     var p=P.produkte[k], spot=D.Q.gold&&D.Q.fx&&p.feinunzen?D.Q.gold.usd*D.Q.fx.rate*p.feinunzen:null;
+    function zuSpot(v){ return spot&&v>0?" ("+(v>=spot?"+":"−")+fNum(Math.abs(v/spot-1)*100,1)+" %)":""; }
+    var ank=p.ankauf>0, alt=ank&&!frisch(p.ankauf_stand);
     L.appendChild(h("div",{cls:"zeile"},
-      h("div",{cls:"name",text:p.name}), h("div",{cls:"wert",text:p.preis>0?fEUR.format(p.preis):"–"}),
-      h("div",{cls:"meta",text:"günstigster Kaufpreis bei gold.de"+(p.stand?" · "+datumDE(p.stand):"")+(p.fehler?" · letzter Abruf fehlgeschlagen":"")}),
-      h("div",{cls:"neben",text:spot&&p.preis>0?"Aufgeld "+fNum((p.preis/spot-1)*100,1)+" %":""})));
+      h("div",{cls:"name",text:p.name}), h("div",{cls:"wert",text:"Ankauf "+(ank?fEUR.format(p.ankauf):"–")}),
+      h("div",{cls:"meta",text:ank?"höchstes Gebot"+zuSpot(p.ankauf)+" · "+datumDE(p.ankauf_stand)+(alt?" · zu alt, App rechnet mit Abschlag":(p.ankauf_fehler?" · letzter Abruf fehlgeschlagen":"")):"kein Ankaufspreis von gold.de, die App rechnet mit Abschlag"}),
+      h("div",{cls:"neben",text:"Kauf "+(p.preis>0?fEUR.format(p.preis)+zuSpot(p.preis):"–")})));
   });
-  setze("fuss-preise","Das sind Preise, zu denen Händler verkaufen. Beim Verkauf an einen Händler bekommst du weniger. Aktualisiert wird einmal am Tag.");
+  setze("fuss-preise","Ankauf ist das höchste Gebot, das ein Händler bei gold.de zahlt, Kauf das günstigste Angebot. Die Prozentzahl ist der Abstand zum Börsenwert. Aktualisiert wird einmal am Tag.");
 }
 function renderWp(r){
   var L=$("list-wp"), S=D.S, Q=D.Q; L.textContent="";
@@ -572,7 +597,7 @@ function geaendert(){ merkeTag(); sichern(); render(); }
 
 /* ---------- Händlerpreise (Datei neben der App, täglich von GitHub erneuert) ---------- */
 function ladePreise(){
-  fetch("preise.json?t="+dayKey()+"-"+new Date().getHours(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.produkte){P=j; render();} }).catch(function(){});
+  fetch("preise.json?t="+dayKey()+"-"+new Date().getHours(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.produkte){P=j; if(D){merkeTag(); sichern();} render();} }).catch(function(){});
 }
 
 /* ---------- Kursabruf bei Alpha Vantage ---------- */
@@ -713,6 +738,12 @@ $("form-av").addEventListener("submit",function(ev){
   D.av=$("av-key").value.trim(); meldung="";
   sichern().then(function(){ hinweis("av-info",D.av?"Schlüssel gespeichert. Die Kurse werden jetzt abgerufen.":"Schlüssel entfernt."); render(); aktualisiere(false); });
 });
+$("form-ab").addEventListener("submit",function(ev){
+  ev.preventDefault(); if(!D) return;
+  var v=parseNum($("ab-wert").value);
+  if(isNaN(v)||v<-20||v>30) return hinweis("ab-info","Gib eine Zahl zwischen −20 und 30 ein, zum Beispiel 1,7.");
+  D.abschlag=v; merkeTag(); sichern().then(function(){ hinweis("ab-info","Gespeichert."); render(); });
+});
 $("exp-btn").addEventListener("click",function(){
   sichern().then(function(){
     var txt=tresor(); if(!txt) return;
@@ -735,7 +766,7 @@ $("imp-btn").addEventListener("click",function(){
     D=Object.assign(leerD(),r.daten); key=r.key; salt=r.salt;
     return sichern();
   }).then(function(){
-    $("imp-pw").value=""; $("imp-datei").value=""; $("av-key").value=D.av||"";
+    $("imp-pw").value=""; $("imp-datei").value=""; $("av-key").value=D.av||""; $("ab-wert").value=fNum(abschlag(),2);
     hinweis("imp-info","Sicherung eingespielt. Ab jetzt gilt das Passwort der Sicherung."); render();
   },function(){ hinweis("imp-info","Die Datei ließ sich nicht öffnen. Entweder stimmt das Passwort nicht oder es ist keine Sicherung des Vermögensbuchs."); });
 });
