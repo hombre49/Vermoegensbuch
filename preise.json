@@ -10,16 +10,20 @@
       "preis": 383.0,
       "stand": "2026-11-10",
       "fehler": false,
-      "ankauf_fehler": true
+      "ankauf_fehler": false,
+      "ankauf": 380.68,
+      "ankauf_stand": "2026-11-10"
     },
     "cb50": {
       "name": "CombiBar 50 × 1 g",
       "url": "https://www.gold.de/kaufen/goldbarren/tafeln-kombi-barren/",
       "feinunzen": 1.607537,
-      "preis": 5904.88,
+      "preis": 5897.31,
       "stand": "2026-11-10",
       "fehler": false,
-      "ankauf_fehler": true
+      "ankauf_fehler": false,
+      "ankauf": 5816.95,
+      "ankauf_stand": "2026-11-10"
     }
   }
 }
