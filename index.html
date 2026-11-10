@@ -65,6 +65,8 @@ main{max-width:860px;margin:0 auto;padding:6px max(18px,env(safe-area-inset-righ
 .wertpaar{display:flex;flex-wrap:wrap;gap:10px 32px}
 .wertpaar b{font-family:var(--fz);font-size:26px;font-weight:700;display:block}
 .meldung{color:var(--warn);font-size:15px}
+.meldung.gut{color:var(--good)}
+.meldung.info{color:var(--muted)}
 
 .zeile{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 16px;padding:13px 0;border-top:1px solid var(--line)}
 .zeile:first-child{border-top:none;padding-top:0}
@@ -353,7 +355,11 @@ function zeitDE(ms){return new Date(ms).toLocaleString("de-DE",{timeZone:"Europe
 function neuId(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36)}
 function warte(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function setze(id,t){$(id).textContent=t}
-function hinweis(id,t){var e=$(id); e.textContent=t||""; e.hidden=!t}
+function hinweis(id,t){
+  var e=$(id), gut=/^(Gespeichert|Schlüssel gespeichert|Sicherung eingespielt|Passwort geändert|GitHub nimmt den Schlüssel an und zeigt das)/.test(t||"")&&!/Erwartet werden/.test(t||"");
+  var info=/^(Prüfe bei|Schlüssel entfernt)/.test(t||"");
+  e.textContent=t||""; e.hidden=!t; e.className="meldung"+(gut?" gut":info?" info":"");
+}
 
 /* ---------- Verschlüsselung (AES-GCM, Schlüssel per PBKDF2 aus dem Passwort) ---------- */
 var enc=new TextEncoder(), dec=new TextDecoder();
@@ -743,8 +749,10 @@ function rueckgaengig(id){
 }
 
 /* ---------- Händlerpreise (Datei neben der App, täglich von GitHub erneuert) ---------- */
+var pDirekt=0;
 function ladePreise(){
-  fetch("preise.json?t="+dayKey()+"-"+new Date().getHours(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.produkte){P=j; if(D){merkeTag(); sichern();} render();} }).catch(function(){});
+  if(Date.now()-pDirekt<600000){ render(); return; }
+  fetch("preise.json?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){ if(j&&j.produkte&&Date.now()-pDirekt>=600000){P=j; if(D){merkeTag(); sichern();} render();} }).catch(function(){});
 }
 
 /* ---------- Händlerpreise aus der App anstoßen (GitHub startet das Preisprogramm) ---------- */
@@ -763,8 +771,8 @@ function gh(pfad,tok,opt){
     return r.status===204?null:(opt.raw?r.text():r.json());
   },function(){ throw {code:"netz"}; });
 }
-function hpStatus(t){
-  var e=$("hp-status"); e.textContent=t||""; e.hidden=!t;
+function hpStatus(t,art){
+  var e=$("hp-status"); e.textContent=t||""; e.hidden=!t; e.className="meldung"+(art?" "+art:"");
   $("hp-btn").disabled=hpBusy; setze("hp-btn",hpBusy?"Läuft …":"Jetzt aktualisieren");
 }
 function ghFehler(c){
@@ -772,7 +780,7 @@ function ghFehler(c){
     case 401: return "GitHub lehnt den Schlüssel ab. Er ist falsch oder abgelaufen. Trag unter „Mehr“ einen neuen ein.";
     case 403: case 404: return "Der Schlüssel darf das Preisprogramm nicht starten. Er braucht für das Repository das Recht „Actions: Read and write“.";
     case "netz": return "Keine Verbindung zu GitHub. Prüf die Internetverbindung und versuch es noch einmal.";
-    case "zeit": return "GitHub hat nach fünf Minuten noch kein Ergebnis geliefert. Die bisherigen Preise bleiben stehen, versuch es später noch einmal.";
+    case "zeit": return "GitHub hat nach zehn Minuten noch kein Ergebnis geliefert. Die bisherigen Preise bleiben stehen, versuch es später noch einmal.";
     case "rot": return "Das Preisprogramm hat bei gold.de keine Preise gefunden. Die bisherigen Preise bleiben stehen.";
     default: return "Die Aktualisierung ist fehlgeschlagen (GitHub meldet "+c+"). Die bisherigen Preise bleiben stehen.";
   }
@@ -781,7 +789,7 @@ function holeHaendler(){
   if(hpBusy||!D) return;
   var tok=D.gh, t0=Date.now(), wid=null;
   if(!tok) return hpStatus("Dafür fehlt der GitHub-Schlüssel. Trag ihn unter „Mehr“ ein.");
-  hpBusy=true; hpStatus("Starte das Preisprogramm bei GitHub …");
+  hpBusy=true; hpStatus("Starte das Preisprogramm bei GitHub …","info");
   gh("/actions/workflows",tok).then(function(j){
     var w=(j.workflows||[]).filter(function(x){return /goldpreise\.ya?ml$/.test(x.path)&&x.state==="active"})[0];
     if(!w) throw {code:404};
@@ -789,9 +797,9 @@ function holeHaendler(){
     return gh("/actions/workflows/"+wid+"/dispatches",tok,{method:"POST",body:{ref:"main"}});
   }).then(function(){
     function frage(){
-      if(Date.now()-t0>300000) throw {code:"zeit"};
+      if(Date.now()-t0>600000) throw {code:"zeit"};
       return warte(8000).then(function(){
-        hpStatus("GitHub holt die Preise bei gold.de, seit "+Math.round((Date.now()-t0)/1000)+" Sekunden. Das dauert ein bis zwei Minuten.");
+        hpStatus("GitHub holt die Preise bei gold.de, seit "+Math.round((Date.now()-t0)/1000)+" Sekunden. Das kann bis zu fünf Minuten dauern. Lass die App solange offen.","info");
         return gh("/actions/workflows/"+wid+"/runs?event=workflow_dispatch&per_page=1",tok);
       }).then(function(j){
         var r=(j.workflow_runs||[])[0];
@@ -804,9 +812,9 @@ function holeHaendler(){
     return gh("/contents/preise.json",null,{raw:true});
   }).then(function(txt){
     var j=JSON.parse(txt);
-    if(j&&j.produkte){ P=j; if(D){ merkeTag(); sichern(); } }
+    if(j&&j.produkte){ P=j; pDirekt=Date.now(); if(D){ merkeTag(); sichern(); } }
     hpBusy=false;
-    hpStatus("Händlerpreise aktualisiert um "+new Date().toLocaleTimeString("de-DE",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"})+" Uhr.");
+    hpStatus("Händlerpreise aktualisiert um "+new Date().toLocaleTimeString("de-DE",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"})+" Uhr.","gut");
     if(D) render();
   }).catch(function(e){ hpBusy=false; hpStatus(ghFehler(e&&e.code!==undefined?e.code:"unbekannt")); });
 }
