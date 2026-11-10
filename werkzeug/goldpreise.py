@@ -34,6 +34,10 @@ PRODUKTE = {
         "feinunzen": 0.1,
         "band": (0.99, 1.30),
         "je_gramm": False,
+        # Ankauf: nur gewöhnliche Stücke, keine Sammlerware, keine aktuellen Jahrgänge (die bringen mehr).
+        "muss": "1/10 oz",
+        "ohne": r"\bPP\b|Proof|Privy|Etui|Zertifikat|Polierte",
+        "nur_aeltere_jahrgaenge": True,
     },
     "cb50": {
         "name": "CombiBar 50 × 1 g",
@@ -41,10 +45,17 @@ PRODUKTE = {
         "feinunzen": 50 / OZ,
         "band": (0.99, 1.25),
         "je_gramm": True,  # Die Seite nennt Preise je 1-g-Stück; ersatzweise Grammpreis × 50.
+        "muss": "50 x 1 g",
+        "ohne": None,
+        "nur_aeltere_jahrgaenge": False,
     },
 }
 ANKAUF_UNTEN = 0.85   # Ankaufspreise unter 85 % des Goldwerts gelten als Lesefehler.
-ANKAUF_OBEN = 1.10    # ... über 110 % ebenfalls (Sammlerstücke, andere Größen).
+ANKAUF_OBEN = 1.15    # ... über 115 % ebenfalls (Sammlerstücke, andere Größen).
+ANBIETER = "zum Anbieter"
+BEWERTUNG = re.compile(r"^\d[.,]\d{1,2}/5\s*\(\d+\)$")
+BLOCKSTART = re.compile(r"^(Einheit:|Paket:|Gewicht:)")
+JAHRGANG = re.compile(r"Jahrgang:\s*(\S+)")
 
 PREIS = re.compile(r"(\d{1,3}(?:\.\d{3})*,\d{2})\s*(?:€|EUR)")
 SPOT = re.compile(r"Gold:?\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*€")
@@ -110,6 +121,58 @@ def hoechster_ankauf(text_verkauf, text_kauf, spot, produkt, kaufpreis):
         if je_g:
             return round(max(je_g) * gramm, 2), sorted(set(je_g), reverse=True)[:8]
     return None, []
+
+
+def gebote(text):
+    """Zerlegt die Verkaufen-Ansicht in einzelne Gebote: Beschreibung, Händler, Preis.
+    Jedes Gebot endet auf der Seite mit der Schaltfläche "zum Anbieter"."""
+    liste = []
+    stuecke = (text or "").split(ANBIETER)[:-1]
+    for stueck in stuecke:
+        zeilen = [z.strip() for z in stueck.splitlines() if z.strip() and z.strip() != "»"]
+        start = None
+        for i in range(len(zeilen) - 1, -1, -1):
+            if BLOCKSTART.match(zeilen[i]):
+                start = i - 1 if zeilen[i].startswith("Einheit:") and i > 0 else i
+                break
+        block = zeilen[start:] if start is not None else zeilen[-12:]
+        werte = betraege(" ".join(block))
+        if not werte:
+            continue
+        haendler = ""
+        for i, z in enumerate(block):
+            if BEWERTUNG.match(z) and i > 0:
+                haendler = block[i - 1]
+                break
+        grenze = block.index(haendler) if haendler in block else len(block)
+        jahr = JAHRGANG.search(" ".join(block))
+        liste.append({
+            "text": " ".join(block),
+            "was": ", ".join(block[:grenze]),
+            "haendler": haendler,
+            "jahrgang": jahr.group(1) if jahr else "",
+            "preis": werte[-1],
+        })
+    return liste
+
+
+def bestes_gebot(text_verkauf, spot, produkt, jahr_heute):
+    """Höchstes Gebot für gewöhnliche Ware. Liefert (Gebot oder None, engere Auswahl)."""
+    wert = spot * produkt["feinunzen"]
+    unten, oben = wert * ANKAUF_UNTEN, wert * ANKAUF_OBEN
+    auswahl = []
+    for g in gebote(text_verkauf):
+        if produkt["muss"] not in g["text"]:
+            continue
+        if produkt["ohne"] and re.search(produkt["ohne"], g["text"]):
+            continue
+        if produkt["nur_aeltere_jahrgaenge"] and g["jahrgang"].isdigit() and int(g["jahrgang"]) >= jahr_heute - 1:
+            continue
+        if not unten <= g["preis"] <= oben:
+            continue
+        auswahl.append(g)
+    auswahl.sort(key=lambda g: -g["preis"])
+    return (auswahl[0] if auswahl else None), auswahl[:6]
 
 
 # ---------- Browser ----------
@@ -223,11 +286,7 @@ def ansichten_per_browser():
                 if text_verkauf is None:
                     log("  Verkaufen-Ansicht NICHT erreicht")
                 else:
-                    stelle = text_verkauf.find("Fehler melden")
-                    anfang = max(0, stelle - 1200) if stelle >= 0 else 0
-                    log("  --- Ausschnitt Verkaufen-Ansicht ---")
-                    log(text_verkauf[anfang:anfang + 3500])
-                    log("  --- Ende Ausschnitt ---")
+                    log(f"  Verkaufen-Ansicht: {len(text_verkauf)} Zeichen, {len(gebote(text_verkauf))} Gebote erkannt")
                 ergebnis[kennung] = (text_kauf, text_verkauf)
             except Exception as grund:
                 log(f"  Browser-Fehler: {type(grund).__name__}: {grund}")
@@ -285,13 +344,26 @@ def main():
         eintrag = ergebnis["produkte"][kennung]
         text_kauf, text_verkauf = ansichten.get(kennung, ("", None))
         spot = ergebnis["spot_eur"]
+        ankauf, kandidaten = None, []
         if text_verkauf and spot:
-            ankauf, kandidaten = hoechster_ankauf(text_verkauf, text_kauf, spot, produkt, eintrag.get("preis"))
-        else:
-            ankauf, kandidaten = None, []
+            gebot, auswahl = bestes_gebot(text_verkauf, spot, produkt, jetzt.year)
+            if gebot:
+                ankauf = round(gebot["preis"], 2)
+                eintrag["ankauf_haendler"] = gebot["haendler"]
+                for g in auswahl:
+                    log(f"    {g['preis']:>9.2f} EUR | {g['haendler']} | {g['was']}")
+            else:
+                # Seitenaufbau nicht erkannt: altes Verfahren (höchster Betrag unter dem Kaufpreis)
+                ankauf, kandidaten = hoechster_ankauf(text_verkauf, text_kauf, spot, produkt, eintrag.get("preis"))
+                eintrag.pop("ankauf_haendler", None)
+                log(f"  Gebote nicht einzeln erkannt, Ersatzverfahren. Kandidaten: {kandidaten}")
+                stelle = text_verkauf.find("Fehler melden")
+                log("  --- Ausschnitt ---")
+                log(text_verkauf[max(0, stelle - 600):max(0, stelle - 600) + 1800])
+                log("  --- Ende Ausschnitt ---")
         if ankauf:
             eintrag.update({"ankauf": ankauf, "ankauf_stand": heute, "ankauf_fehler": False})
-            log(f"[Ankauf] {produkt['name']}: {ankauf:.2f} EUR (Kandidaten: {kandidaten})")
+            log(f"[Ankauf] {produkt['name']}: {ankauf:.2f} EUR" + (f" bei {eintrag['ankauf_haendler']}" if eintrag.get("ankauf_haendler") else ""))
         else:
             eintrag["ankauf_fehler"] = True
             log(f"[Ankauf] {produkt['name']}: kein Ankaufspreis gefunden")
