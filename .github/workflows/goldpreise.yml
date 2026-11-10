@@ -1,0 +1,26 @@
+name: Goldpreise
+
+# Läuft jeden Morgen und lässt sich unter "Actions" auch von Hand starten ("Run workflow").
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  holen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preise von gold.de holen
+        run: python3 werkzeug/goldpreise.py
+      - name: preise.json ablegen
+        if: always()
+        run: |
+          git config user.name "Goldpreise"
+          git config user.email "actions@users.noreply.github.com"
+          git add preise.json
+          git diff --cached --quiet || git commit -m "Goldpreise aktualisiert"
+          git push
