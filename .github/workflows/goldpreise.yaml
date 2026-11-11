@@ -22,7 +22,7 @@ jobs:
         continue-on-error: true
         run: |
           pip install playwright
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium
       - name: Preise von gold.de holen
         run: python werkzeug/goldpreise.py
       - name: Ergebnis ablegen
