@@ -782,8 +782,17 @@ function ghFehler(c){
     case "netz": return "Keine Verbindung zu GitHub. Prüf die Internetverbindung und versuch es noch einmal.";
     case "zeit": return "GitHub hat nach zehn Minuten noch kein Ergebnis geliefert. Die bisherigen Preise bleiben stehen, versuch es später noch einmal.";
     case "rot": return "Das Preisprogramm hat bei gold.de keine Preise gefunden. Die bisherigen Preise bleiben stehen.";
+    case "abbruch": return "Der Lauf bei GitHub wurde abgebrochen. Die bisherigen Preise bleiben stehen.";
+    case "zeitlimit": return "Der Lauf bei GitHub hat sein Zeitlimit von zehn Minuten erreicht und wurde beendet. Die bisherigen Preise bleiben stehen, versuch es noch einmal.";
     default: return "Die Aktualisierung ist fehlgeschlagen (GitHub meldet "+c+"). Die bisherigen Preise bleiben stehen.";
   }
+}
+var stand={art:"wartet",seit:0}, tick=null;
+function zeigeStand(){
+  var s=Math.max(0,Math.round((Date.now()-stand.seit)/1000));
+  hpStatus(stand.art==="laeuft"
+    ? "Läuft bei GitHub: das Preisprogramm holt die Preise bei gold.de, seit "+s+" Sekunden. Lass die App solange offen."
+    : "Wartet auf GitHub: noch kein Rechner frei, seit "+s+" Sekunden. Lass die App solange offen.","info");
 }
 function holeHaendler(){
   if(hpBusy||!D) return;
@@ -796,27 +805,41 @@ function holeHaendler(){
     wid=w.id;
     return gh("/actions/workflows/"+wid+"/dispatches",tok,{method:"POST",body:{ref:"main"}});
   }).then(function(){
+    stand={art:"wartet",seit:t0}; zeigeStand();
+    tick=setInterval(zeigeStand,1000);
     function frage(){
       if(Date.now()-t0>600000) throw {code:"zeit"};
-      return warte(8000).then(function(){
-        hpStatus("GitHub holt die Preise bei gold.de, seit "+Math.round((Date.now()-t0)/1000)+" Sekunden. Das kann bis zu fünf Minuten dauern. Lass die App solange offen.","info");
+      return warte(5000).then(function(){
         return gh("/actions/workflows/"+wid+"/runs?event=workflow_dispatch&per_page=1",tok);
       }).then(function(j){
         var r=(j.workflow_runs||[])[0];
-        if(!r||Date.parse(r.created_at)<t0-60000||r.status!=="completed") return frage();
-        if(r.conclusion!=="success") throw {code:"rot"};
+        if(!r||Date.parse(r.created_at)<t0-60000) return frage();
+        if(r.status==="completed"){
+          if(r.conclusion==="success") return;
+          throw {code:r.conclusion==="cancelled"?"abbruch":r.conclusion==="timed_out"?"zeitlimit":"rot"};
+        }
+        if(r.status==="in_progress"&&stand.art!=="laeuft"){
+          stand={art:"laeuft",seit:Date.now()};
+          zeigeStand();
+          return gh("/actions/runs/"+r.id+"/jobs",tok).then(function(jj){
+            var st=Date.parse(((jj.jobs||[])[0]||{}).started_at||"");
+            if(!isNaN(st)&&st<=Date.now()) stand.seit=st;
+          },function(){}).then(frage);
+        }
+        return frage();
       });
     }
     return frage();
   }).then(function(){
     return gh("/contents/preise.json",null,{raw:true});
   }).then(function(txt){
+    clearInterval(tick);
     var j=JSON.parse(txt);
     if(j&&j.produkte){ P=j; pDirekt=Date.now(); if(D){ merkeTag(); sichern(); } }
     hpBusy=false;
     hpStatus("Händlerpreise aktualisiert um "+new Date().toLocaleTimeString("de-DE",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit"})+" Uhr.","gut");
     if(D) render();
-  }).catch(function(e){ hpBusy=false; hpStatus(ghFehler(e&&e.code!==undefined?e.code:"unbekannt")); });
+  }).catch(function(e){ clearInterval(tick); hpBusy=false; hpStatus(ghFehler(e&&e.code!==undefined?e.code:"unbekannt")); });
 }
 $("hp-btn").addEventListener("click",holeHaendler);
 $("form-gh").addEventListener("submit",function(ev){
