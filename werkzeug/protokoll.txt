@@ -1,27 +1,27 @@
-Lauf vom 2026-11-12 07:09 UTC
-[Kauf] Krügerrand 1/10 oz: 376.23 EUR (Gold 3585.85 EUR/oz)
-[Kauf] CombiBar 50 × 1 g: 5758.50 EUR (Gold 3582.15 EUR/oz)
+Lauf vom 2026-11-12 07:37 UTC
+[Kauf] Krügerrand 1/10 oz: 374.76 EUR (Gold 3573.00 EUR/oz)
+[Kauf] CombiBar 50 × 1 g: 5741.50 EUR (Gold 3571.65 EUR/oz)
 [Browser] Krügerrand 1/10 oz
-  Kaufen-Ansicht: 26592 Zeichen, 147 Beträge
+  Kaufen-Ansicht: 26567 Zeichen, 147 Beträge
   Liste geändert durch Adresse mit load=verkaufen
-  Verkaufen-Ansicht: 27147 Zeichen, 50 Gebote erkannt
+  Verkaufen-Ansicht: 27130 Zeichen, 50 Gebote erkannt
   Nachgeladene Adressen bei gold.de: https://www.gold.de/ajax/preisvergleich23.php, https://www.gold.de/cache/api.json, https://www.gold.de/cdn/js/chosen.jquery.js, https://www.gold.de/cdn/js/cms/preisvergleich23.js, https://www.gold.de/cdn/js/slidebars.js, https://www.gold.de/cdn/js/spinners/spinners.min.js
 [Browser] CombiBar 50 × 1 g
-  Kaufen-Ansicht: 23967 Zeichen, 168 Beträge
+  Kaufen-Ansicht: 23934 Zeichen, 168 Beträge
   Liste geändert durch Adresse mit load=verkaufen
-  Verkaufen-Ansicht: 21884 Zeichen, 47 Gebote erkannt
+  Verkaufen-Ansicht: 21891 Zeichen, 47 Gebote erkannt
   Nachgeladene Adressen bei gold.de: https://www.gold.de/cache/api.json
-       372.68 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1993
-       372.68 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1994
-       372.68 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1995
-       372.68 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1996
-       372.68 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1997
-       372.68 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1998
-[Ankauf] Krügerrand 1/10 oz: 372.68 EUR bei Heubach Edelmetalle
-      5738.02 EUR | philoro Edelmetalle | Paket: 50 x 1 g, philoro
-      5731.02 EUR | philoro Edelmetalle | Paket: 50 x 1 g, CombiBar verschiedene Hersteller
+       371.34 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1993
+       371.34 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1994
+       371.34 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1995
+       371.34 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1996
+       371.34 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1997
+       371.34 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1998
+[Ankauf] Krügerrand 1/10 oz: 371.34 EUR bei Heubach Edelmetalle
+      5716.00 EUR | philoro Edelmetalle | Paket: 50 x 1 g, philoro
+      5709.00 EUR | philoro Edelmetalle | Paket: 50 x 1 g, CombiBar verschiedene Hersteller
       5698.39 EUR | Goldkontor Hamburg | Paket: 50 x 1 g, CombiBar verschiedene Hersteller
       5683.00 EUR | Leihhaus Lohmann | Paket: 50 x 1 g, CombiBar verschiedene Hersteller, LBMA-zertifiziert
       5683.00 EUR | Leihhaus Lohmann | Paket: 50 x 1 g, Combicube Degussa, LBMA-zertifiziert
-      5681.46 EUR | GoldSilberShop.de | Paket: 50 x 1 g, CombiBar Heraeus, LBMA-zertifiziert, 50 x 1 g
-[Ankauf] CombiBar 50 × 1 g: 5738.02 EUR bei philoro Edelmetalle
+      5669.74 EUR | Münzhandel Kleiner | Paket: 50 x 1 g, UnityBar Heimerle + Meule, LBMA-zertifiziert
+[Ankauf] CombiBar 50 × 1 g: 5716.00 EUR bei philoro Edelmetalle
