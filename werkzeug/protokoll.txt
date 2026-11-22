@@ -1,15 +1,15 @@
-Lauf vom 2026-11-21 07:29 UTC
+Lauf vom 2026-11-22 07:29 UTC
 [Kauf] Krügerrand 1/10 oz: 344.83 EUR (Gold 3213.10 EUR/oz)
 [Kauf] CombiBar 50 × 1 g: 5368.57 EUR (Gold 3213.10 EUR/oz)
 [Browser] Krügerrand 1/10 oz
-  Kaufen-Ansicht: 26790 Zeichen, 136 Beträge
+  Kaufen-Ansicht: 26816 Zeichen, 136 Beträge
   Liste geändert durch Adresse mit load=verkaufen
-  Verkaufen-Ansicht: 27840 Zeichen, 50 Gebote erkannt
+  Verkaufen-Ansicht: 27884 Zeichen, 50 Gebote erkannt
   Nachgeladene Adressen bei gold.de: https://www.gold.de/ajax/preisvergleich23.php, https://www.gold.de/cache/api.json, https://www.gold.de/cdn/js/chosen.jquery.js, https://www.gold.de/cdn/js/cms/preisvergleich23.js, https://www.gold.de/cdn/js/slidebars.js, https://www.gold.de/cdn/js/spinners/spinners.min.js
 [Browser] CombiBar 50 × 1 g
-  Kaufen-Ansicht: 22946 Zeichen, 161 Beträge
+  Kaufen-Ansicht: 22937 Zeichen, 161 Beträge
   Liste geändert durch Adresse mit load=verkaufen
-  Verkaufen-Ansicht: 21707 Zeichen, 46 Gebote erkannt
+  Verkaufen-Ansicht: 21717 Zeichen, 46 Gebote erkannt
   Nachgeladene Adressen bei gold.de: https://www.gold.de/cache/api.json
        338.78 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1993
        338.78 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1994
@@ -22,6 +22,6 @@ Lauf vom 2026-11-21 07:29 UTC
       5134.56 EUR | philoro Edelmetalle | Paket: 50 x 1 g, philoro
       5127.56 EUR | philoro Edelmetalle | Paket: 50 x 1 g, CombiBar verschiedene Hersteller
       5123.65 EUR | Heubach Edelmetalle | Paket: 50 x 1 g, CombiBar verschiedene Hersteller, 50 x 1 g
+      5116.24 EUR | MP Edelmetalle | Paket: 50 x 1 g, CombiBar verschiedene Hersteller, 50 x 1 g
       5100.89 EUR | ESG Edelmetall-Service | Paket: 50 x 1 g, CombiBar Degussa, LBMA-zertifiziert, 50 x 1 g
-      5100.89 EUR | ESG Edelmetall-Service | Paket: 50 x 1 g, CombiBar Valcambi, LBMA-zertifiziert, gebraucht, 50 x 1 g
 [Ankauf] CombiBar 50 × 1 g: 5134.56 EUR bei philoro Edelmetalle
