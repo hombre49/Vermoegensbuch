@@ -1,17 +1,17 @@
 {
   "quelle": "gold.de",
   "stand": "2026-11-24",
-  "spot_eur": 3317.65,
+  "spot_eur": 3321.4,
   "produkte": {
     "kr110": {
       "name": "Krügerrand 1/10 oz",
       "url": "https://www.gold.de/kaufen/goldmuenzen/kruegerrand/?stkl=1%2F10+oz",
       "feinunzen": 0.1,
-      "preis": 356.04,
+      "preis": 356.56,
       "stand": "2026-11-24",
       "fehler": false,
       "ankauf_fehler": false,
-      "ankauf": 348.24,
+      "ankauf": 348.73,
       "ankauf_stand": "2026-11-24",
       "ankauf_haendler": "Heubach Edelmetalle"
     },
@@ -19,11 +19,11 @@
       "name": "CombiBar 50 × 1 g",
       "url": "https://www.gold.de/kaufen/goldbarren/tafeln-kombi-barren/",
       "feinunzen": 1.607537,
-      "preis": 5509.64,
+      "preis": 5522.04,
       "stand": "2026-11-24",
       "fehler": false,
       "ankauf_fehler": false,
-      "ankauf": 5302.38,
+      "ankauf": 5307.19,
       "ankauf_stand": "2026-11-24",
       "ankauf_haendler": "philoro Edelmetalle"
     }
