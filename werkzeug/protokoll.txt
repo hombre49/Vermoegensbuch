@@ -1,15 +1,15 @@
-Lauf vom 2026-11-28 07:33 UTC
+Lauf vom 2026-11-28 07:54 UTC
 [Kauf] Krügerrand 1/10 oz: 359.68 EUR (Gold 3339.55 EUR/oz)
 [Kauf] CombiBar 50 × 1 g: 5551.13 EUR (Gold 3339.55 EUR/oz)
 [Browser] Krügerrand 1/10 oz
-  Kaufen-Ansicht: 26647 Zeichen, 136 Beträge
+  Kaufen-Ansicht: 26687 Zeichen, 136 Beträge
   Liste geändert durch Adresse mit load=verkaufen
-  Verkaufen-Ansicht: 27824 Zeichen, 50 Gebote erkannt
+  Verkaufen-Ansicht: 27826 Zeichen, 50 Gebote erkannt
   Nachgeladene Adressen bei gold.de: https://www.gold.de/ajax/preisvergleich23.php, https://www.gold.de/cache/api.json, https://www.gold.de/cdn/js/chosen.jquery.js, https://www.gold.de/cdn/js/cms/preisvergleich23.js, https://www.gold.de/cdn/js/slidebars.js, https://www.gold.de/cdn/js/spinners/spinners.min.js
 [Browser] CombiBar 50 × 1 g
-  Kaufen-Ansicht: 22790 Zeichen, 158 Beträge
+  Kaufen-Ansicht: 22744 Zeichen, 158 Beträge
   Liste geändert durch Adresse mit load=verkaufen
-  Verkaufen-Ansicht: 21891 Zeichen, 47 Gebote erkannt
+  Verkaufen-Ansicht: 21846 Zeichen, 47 Gebote erkannt
   Nachgeladene Adressen bei gold.de: https://www.gold.de/cache/api.json
        350.87 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1993
        350.87 EUR | Heubach Edelmetalle | Krügerrand, Einheit: 1/10 oz, Jahrgang: 1994
